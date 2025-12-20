@@ -43,7 +43,7 @@ public class ConnectionSettings extends PreferenceActivity {
         prefHost.setDialogTitle(R.string.host);
         prefHost.setTitle(R.string.host);
         prefHost.setSummary(R.string.hostDescription);
-        prefHost.setDefaultValue("127.0.0.1");
+        prefHost.setDefaultValue("192.168.1.201");
         prefHost.setKey(keyPrefix + "hostname");
         toCategory.addPreference(prefHost);
 
