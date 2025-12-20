@@ -40,6 +40,10 @@ public class CoverInfo extends AlbumInfo {
 
     private boolean mRequestGivenUp = false;
 
+    private int mRetryCount = 0;
+
+    private static final int MAX_RETRIES = 3;
+
     private STATE mState = STATE.NEW;
 
     public CoverInfo(final AlbumInfo albumInfo) {
@@ -58,6 +62,7 @@ public class CoverInfo extends AlbumInfo {
         mCoverRetriever = coverInfo.mCoverRetriever;
         mListener = coverInfo.mListener;
         mRequestGivenUp = coverInfo.mRequestGivenUp;
+        mRetryCount = coverInfo.mRetryCount;
     }
 
     public Bitmap[] getBitmap() {
@@ -94,6 +99,22 @@ public class CoverInfo extends AlbumInfo {
 
     public boolean isRequestGivenUp() {
         return mRequestGivenUp;
+    }
+
+    public int getRetryCount() {
+        return mRetryCount;
+    }
+
+    public void incrementRetryCount() {
+        mRetryCount++;
+    }
+
+    public boolean canRetry() {
+        return mRetryCount < MAX_RETRIES;
+    }
+
+    public void resetRetryCount() {
+        mRetryCount = 0;
     }
 
     public void setBitmap(final Bitmap[] bitmap) {

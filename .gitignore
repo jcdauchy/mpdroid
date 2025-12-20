@@ -38,3 +38,5 @@ MPDroid/crashlytics.properties
 key/**
 
 keystore.properties
+
+*.ps1

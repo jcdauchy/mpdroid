@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Allow cleartext traffic for cover art download services -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">ws.spotify.com</domain>
+        <domain includeSubdomains="true">api.spotify.com</domain>
+        <domain includeSubdomains="true">api.discogs.com</domain>
+        <domain includeSubdomains="true">discogs.com</domain>
+        <domain includeSubdomains="true">musicbrainz.org</domain>
+        <domain includeSubdomains="true">coverartarchive.org</domain>
+        <domain includeSubdomains="true">lastfm.freetls.fastly.net</domain>
+        <domain includeSubdomains="true">last.fm</domain>
+        <domain includeSubdomains="true">ws.audioscrobbler.com</domain>
+        <domain includeSubdomains="true">deezer.com</domain>
+        <domain includeSubdomains="true">api.deezer.com</domain>
+        <domain includeSubdomains="true">gracenote.com</domain>
+        <domain includeSubdomains="true">itunes.apple.com</domain>
+    </domain-config>
+    
+    <!-- Allow cleartext for local network (MPD server) -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">10.0.0.0/8</domain>
+        <domain includeSubdomains="true">172.16.0.0/12</domain>
+        <domain includeSubdomains="true">192.168.0.0/16</domain>
+    </domain-config>
+    
+    <!-- Default: allow all cleartext for backward compatibility -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

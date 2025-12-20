@@ -220,19 +220,32 @@ public class MPDApplication extends Application implements
             mAlertDialog = new ProgressDialog(mCurrentActivity);
             mAlertDialog.setTitle(R.string.connecting);
             mAlertDialog.setMessage(getResources().getString(R.string.connectingToServer));
-            mAlertDialog.setCancelable(false);
-            mAlertDialog.setOnKeyListener(new OnKeyListener() {
+            // Make dialog cancelable so users can dismiss it if connection is stuck
+            mAlertDialog.setCancelable(true);
+            mAlertDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
                 @Override
-                public boolean onKey(final DialogInterface dialog, final int keyCode,
-                        final KeyEvent event) {
-                    // Handle all keys!
-                    return true;
+                public void onCancel(final DialogInterface dialog) {
+                    // User cancelled the connection attempt
+                    oMPDAsyncHelper.disconnect();
                 }
             });
             try {
                 mAlertDialog.show();
             } catch (final BadTokenException ignored) {
                 // Can't display it. Don't care.
+            }
+            
+            // Add a connection timeout - dismiss dialog and fail after 15 seconds
+            if (mAlertDialog != null) {
+                new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (mAlertDialog != null && mAlertDialog instanceof ProgressDialog 
+                                && mAlertDialog.isShowing()) {
+                            connectionFailed("Connection timeout");
+                        }
+                    }
+                }, 15000L);
             }
         }
 

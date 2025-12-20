@@ -1040,12 +1040,23 @@ public final class CoverManager {
                         }
 
                     } catch (final Exception e) {
-                        Log.e(TAG, "Fetch cover failure.", e);
+                        Log.e(TAG, "Fetch cover failure for " + mCoverInfo.getAlbum() 
+                                + " (attempt " + (mCoverInfo.getRetryCount() + 1) + ")", e);
+                        // Retry if we haven't exceeded max retries
+                        if (mCoverInfo.canRetry()) {
+                            mCoverInfo.incrementRetryCount();
+                            mCoverInfo.setState(WEB_COVER_FETCH);
+                            Log.d(TAG, "Retrying cover fetch for " + mCoverInfo.getAlbum() 
+                                    + " (retry " + mCoverInfo.getRetryCount() + ")");
+                        } else {
+                            mCoverInfo.setState(CoverInfo.STATE.COVER_NOT_FOUND);
+                        }
                     }
 
                 }
             } else {
                 mCoverInfo.setRequestGivenUp(true);
+                mCoverInfo.setState(CoverInfo.STATE.COVER_NOT_FOUND);
                 Log.w(TAG, "Too many requests, giving up this one : " + mCoverInfo.getAlbum());
             }
 
@@ -1059,7 +1070,7 @@ public final class CoverManager {
         @Override
         public void run() {
 
-            CoverInfo coverInfo;
+            CoverInfo coverInfo = null;
 
             while (mActive) {
 
@@ -1127,8 +1138,23 @@ public final class CoverManager {
                                 mCreateBitmapExecutor.submit(new CreateBitmapTask(coverInfo));
                                 break;
                             } else {
-                                coverInfo.setState(CoverInfo.STATE.COVER_NOT_FOUND);
-                                notifyListeners(coverInfo);
+                                // Retry if we haven't exceeded max retries
+                                if (coverInfo.canRetry()) {
+                                    coverInfo.incrementRetryCount();
+                                    if (DEBUG) {
+                                        Log.d(TAG, "Retrying web cover fetch for " + coverInfo.getAlbum() 
+                                                + " (retry " + coverInfo.getRetryCount() + ")");
+                                    }
+                                    // Re-submit to fetch executor
+                                    if (coverInfo.isPriority()) {
+                                        mPriorityCoverFetchExecutor.submit(new FetchCoverTask(coverInfo));
+                                    } else {
+                                        mCoverFetchExecutor.submit(new FetchCoverTask(coverInfo));
+                                    }
+                                } else {
+                                    coverInfo.setState(CoverInfo.STATE.COVER_NOT_FOUND);
+                                    notifyListeners(coverInfo);
+                                }
                                 break;
                             }
                         case CREATE_BITMAP:
@@ -1165,6 +1191,21 @@ public final class CoverManager {
                 } catch (final Exception e) {
                     if (DEBUG) {
                         Log.e(TAG, "Cover request processing failure.", e);
+                    }
+                    // Retry or notify listeners that cover was not found
+                    if (coverInfo != null) {
+                        if (coverInfo.canRetry()) {
+                            coverInfo.incrementRetryCount();
+                            coverInfo.setState(CoverInfo.STATE.NEW);
+                            mRequests.addLast(coverInfo);
+                            if (DEBUG) {
+                                Log.d(TAG, "Retrying after exception for " + coverInfo.getAlbum() 
+                                        + " (retry " + coverInfo.getRetryCount() + ")");
+                            }
+                        } else {
+                            coverInfo.setState(CoverInfo.STATE.COVER_NOT_FOUND);
+                            notifyListeners(coverInfo);
+                        }
                     }
                 }
             }
