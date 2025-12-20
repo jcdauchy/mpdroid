@@ -1,0 +1,14 @@
+<component name="CopyrightManager">
+  <settings default="">
+    <module2copyright>
+      <element module="MPDroid" copyright="Apache" />
+      <element module="JMPDComm" copyright="2-Clause BSD" />
+      <element module="StringComparator" copyright="3-Clause BSD (StringComparator)" />
+      <element module="AndroidSlidingUpPanel" copyright="Apache" />
+      <element module="WeakLinkedList" copyright="Apache (WeakLinkedList)" />
+    </module2copyright>
+    <LanguageOptions name="__TEMPLATE__">
+      <option name="lenBefore" value="8080" />
+    </LanguageOptions>
+  </settings>
+</component>

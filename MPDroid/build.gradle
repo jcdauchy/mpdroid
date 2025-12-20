@@ -1,0 +1,70 @@
+apply plugin: 'com.android.application'
+
+repositories {
+    google()
+    mavenCentral()
+    flatDir {
+        dirs 'arrs'
+    }
+}
+
+def keystore = new Properties()
+if (rootProject.file('keystore.properties').exists()) {
+    rootProject.file('keystore.properties').withInputStream { keystore.load(it) }
+}
+
+android {
+    namespace 'com.namelessdev.mpdroid'
+    compileSdkVersion 35
+
+    signingConfigs {
+        release {
+            if (keystore.size() > 0) {
+                storeFile file(keystore.storeFile)
+                storePassword keystore.storePassword
+                keyAlias keystore.keyAlias
+                keyPassword keystore.keyPassword
+            }
+        }
+    }
+
+    defaultConfig {
+        minSdkVersion 24
+        targetSdkVersion 35
+        versionCode 60
+        versionName "3.00"
+    }
+
+    lintOptions {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            signingConfig signingConfigs.release
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.legacy:legacy-support-v4:1.0.0'
+    implementation 'androidx.palette:palette:1.0.0'
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+    implementation 'androidx.cardview:cardview:1.0.0'
+    implementation 'com.google.android.material:material:1.13.0'
+    implementation 'androidx.preference:preference:1.2.1'
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+
+    implementation project(':JMPDCommAndroid')
+
+    implementation(name:'library-0.9.0', ext:'aar')
+    implementation 'com.sothree.slidinguppanel:library:3.4.0'
+}

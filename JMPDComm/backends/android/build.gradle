@@ -1,0 +1,37 @@
+apply plugin: 'com.android.library'
+
+repositories {
+    google()
+    mavenCentral()
+}
+
+android {
+    namespace 'com.namelessdev.jmpdcomm.android'
+    compileSdkVersion 35
+
+    defaultConfig {
+        minSdkVersion 24
+    }
+
+    lintOptions {
+        abortOnError false
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    sourceSets.main {
+        java {
+            srcDirs {
+                ['../../src/main/java', 'src/main/java']
+            }
+        }
+        resources {
+            srcDirs {
+                ['../../src/main/resources']
+            }
+        }
+    }
+}

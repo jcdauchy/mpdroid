@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/cardBackground"
+    android:paddingBottom="10dp">
+
+    <com.namelessdev.mpdroid.ui.SquareImageView
+        android:id="@+id/albumCover"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentTop="true"
+        android:paddingTop="1dip"
+        android:scaleType="centerCrop"
+        android:src="?attr/noCoverArtIcon" />
+
+    <ProgressBar
+        android:id="@+id/albumCoverProgress"
+        style="?android:attr/progressBarStyleLarge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/albumCover"
+        android:layout_alignRight="@+id/albumCover"
+        android:layout_centerInParent="true"
+        android:visible="false" />
+
+    <TextView
+        android:id="@+id/album_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/albumCover"
+        android:fontFamily="sans-serif-light"
+        android:gravity="center_vertical"
+        android:paddingLeft="10dp"
+        android:paddingRight="10dp"
+        android:paddingTop="10dp"
+        android:singleLine="true"
+        android:textColor="?attr/cardPrimaryTextColor" />
+
+    <TextView
+        android:id="@+id/album_info"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/album_name"
+        android:fontFamily="sans-serif-light"
+        android:gravity="center_vertical"
+        android:paddingLeft="10dp"
+        android:paddingRight="10dp"
+        android:paddingBottom="5dp"
+        android:singleLine="true"
+        android:textSize="11sp" />
+
+    <!--<ImageButton
+        android:id="@+id/menu"
+        android:layout_width="40dip"
+        android:layout_height="40dip"
+        android:layout_alignParentRight="true"
+        android:layout_alignTop="@+id/album_name"
+        android:background="@null"
+        android:src="@drawable/ic_menu_moreoverflow_card" />-->
+
+</RelativeLayout>

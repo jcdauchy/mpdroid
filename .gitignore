@@ -1,0 +1,40 @@
+# generated files
+bin/
+gen/
+out/
+build/
+
+# Local configuration file (sdk path, etc)
+local.properties
+
+# Mac OS thumbnail db
+.DS_Store
+
+# Recommended ignore from Gradle
+.idea/dataSources.*
+.idea/inspectionProfiles
+.idea/misc.xml
+.idea/tasks.xml
+
+.idea/dictionaries
+.idea/libraries
+
+# Local IDEA workspace
+.idea/workspace.xml
+
+# Gradle cache
+.gradle
+
+# Sandbox stuff
+_sandbox
+
+# Crashlytics generated files
+MPDroid/src/main/res/values/com_crashlytics_export_strings.xml
+MPDroid/crashlytics.properties
+
+# Intellij
+*.iml
+
+key/**
+
+keystore.properties
