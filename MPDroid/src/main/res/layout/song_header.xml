@@ -50,13 +50,27 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@+id/tracks_artist"
-        android:layout_marginBottom="10dip"
+        android:layout_marginBottom="5dip"
         android:layout_marginLeft="8dip"
         android:layout_toRightOf="@+id/albumCoverFrame"
         android:ellipsize="end"
         android:gravity="center_vertical"
         android:singleLine="true"
         android:textAppearance="?android:attr/textAppearanceSmall" />
+
+    <TextView
+        android:id="@+id/tracks_path"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/tracks_info"
+        android:layout_marginBottom="10dip"
+        android:layout_marginLeft="8dip"
+        android:layout_toRightOf="@+id/albumCoverFrame"
+        android:ellipsize="end"
+        android:gravity="center_vertical"
+        android:singleLine="true"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:textColor="?android:attr/textColorSecondary" />
 
     <include
         android:id="@+id/list_separator_layout"

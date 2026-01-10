@@ -39,6 +39,11 @@ import android.content.DialogInterface.OnClickListener;
 import android.content.DialogInterface.OnKeyListener;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.NetworkRequest;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -95,6 +100,9 @@ public class MPDApplication extends Application implements
     private SettingsHelper mSettingsHelper = null;
 
     private boolean mSettingsShown = false;
+
+    /** NetworkCallback for modern Android network monitoring (API 23+) */
+    private ConnectivityManager.NetworkCallback mNetworkCallback = null;
 
     public static MPDApplication getInstance() {
         return sInstance;
@@ -236,6 +244,8 @@ public class MPDApplication extends Application implements
             }
             
             // Add a connection timeout - dismiss dialog and fail after 15 seconds
+            // Increased timeout for modern Android versions which may have network delays
+            final long timeout = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? 20000L : 15000L;
             if (mAlertDialog != null) {
                 new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
                     @Override
@@ -245,7 +255,7 @@ public class MPDApplication extends Application implements
                             connectionFailed("Connection timeout");
                         }
                     }
-                }, 15000L);
+                }, timeout);
             }
         }
 
@@ -471,6 +481,102 @@ public class MPDApplication extends Application implements
         oMPDAsyncHelper.addConnectionListener(this);
 
         mDisconnectScheduler = new Timer();
+        
+        // Register NetworkCallback for modern Android versions (API 23+)
+        registerNetworkCallback();
+    }
+    
+    @Override
+    public void onTerminate() {
+        // Clean up NetworkCallback when application terminates
+        unregisterNetworkCallback();
+        super.onTerminate();
+    }
+    
+    /**
+     * Registers a NetworkCallback to monitor network changes and trigger reconnection.
+     * Uses modern API for Android 6.0+ (API 23+).
+     */
+    private void registerNetworkCallback() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                final ConnectivityManager cm =
+                        (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+                if (cm == null) {
+                    return;
+                }
+
+                final NetworkRequest.Builder builder = new NetworkRequest.Builder();
+                // Request WiFi and Ethernet networks with internet capability
+                builder.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+                builder.addTransportType(NetworkCapabilities.TRANSPORT_WIFI);
+                builder.addTransportType(NetworkCapabilities.TRANSPORT_ETHERNET);
+
+                mNetworkCallback = new ConnectivityManager.NetworkCallback() {
+                    @Override
+                    public void onAvailable(final Network network) {
+                        Log.d(TAG, "Network available, checking if reconnection needed");
+                        // Use Handler to delay reconnection slightly
+                        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (oMPDAsyncHelper != null && oMPDAsyncHelper.oMPD != null &&
+                                        !oMPDAsyncHelper.oMPD.isConnected() &&
+                                        !mConnectionLocks.isEmpty()) {
+                                    Log.d(TAG, "Attempting to reconnect to MPD");
+                                    connect();
+                                }
+                            }
+                        }, 2000L); // Wait 2 seconds for network to stabilize
+                    }
+
+                    @Override
+                    public void onLost(final Network network) {
+                        Log.d(TAG, "Network lost");
+                        // Connection will be detected as lost by MPDStatusMonitor
+                    }
+
+                    @Override
+                    public void onCapabilitiesChanged(final Network network,
+                            final NetworkCapabilities networkCapabilities) {
+                        // Network capabilities changed, check if we should reconnect
+                        if (networkCapabilities.hasCapability(
+                                NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                                (networkCapabilities.hasTransport(
+                                        NetworkCapabilities.TRANSPORT_WIFI) ||
+                                 networkCapabilities.hasTransport(
+                                         NetworkCapabilities.TRANSPORT_ETHERNET))) {
+                            onAvailable(network);
+                        }
+                    }
+                };
+
+                cm.registerNetworkCallback(builder.build(), mNetworkCallback);
+                Log.d(TAG, "NetworkCallback registered for network monitoring");
+            } catch (final Exception e) {
+                Log.w(TAG, "Failed to register NetworkCallback", e);
+                mNetworkCallback = null;
+            }
+        }
+    }
+
+    /**
+     * Unregisters the NetworkCallback. Should be called when the application is being destroyed.
+     */
+    private void unregisterNetworkCallback() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && mNetworkCallback != null) {
+            try {
+                final ConnectivityManager cm =
+                        (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+                if (cm != null) {
+                    cm.unregisterNetworkCallback(mNetworkCallback);
+                    Log.d(TAG, "NetworkCallback unregistered");
+                }
+            } catch (final Exception e) {
+                Log.w(TAG, "Failed to unregister NetworkCallback", e);
+            }
+            mNetworkCallback = null;
+        }
     }
 
     /**

@@ -103,6 +103,26 @@ public class ConnectionSettings extends PreferenceActivity {
         persistentNotification.setKey(keyPrefix + "persistentNotification");
         toCategory.addPreference(persistentNotification);
 
+        // pySpotify settings
+        final EditTextPreference prefPySpotifyHost = new EditTextPreference(this);
+        prefPySpotifyHost.getEditText().setInputType(
+                InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+        prefPySpotifyHost.setDialogTitle(R.string.pySpotifyHost);
+        prefPySpotifyHost.setTitle(R.string.pySpotifyHost);
+        prefPySpotifyHost.setSummary(R.string.pySpotifyHostDescription);
+        prefPySpotifyHost.setDefaultValue("192.168.1.201");
+        prefPySpotifyHost.setKey(keyPrefix + "pySpotifyHost");
+        toCategory.addPreference(prefPySpotifyHost);
+
+        final EditTextPreference prefPySpotifyPort = new EditTextPreference(this);
+        prefPySpotifyPort.getEditText().setInputType(InputType.TYPE_CLASS_NUMBER);
+        prefPySpotifyPort.setDialogTitle(R.string.pySpotifyPort);
+        prefPySpotifyPort.setTitle(R.string.pySpotifyPort);
+        prefPySpotifyPort.setSummary(R.string.pySpotifyPortDescription);
+        prefPySpotifyPort.setDefaultValue("5000");
+        prefPySpotifyPort.setKey(keyPrefix + "pySpotifyPort");
+        toCategory.addPreference(prefPySpotifyPort);
+
         onContentChanged();
     }
 

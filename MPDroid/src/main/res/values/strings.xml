@@ -107,6 +107,11 @@
     <string name="notInRange">Not in range, remembered</string>
     <string name="playlistDeleted">Playlist %s deleted</string>
     <string name="deletePlaylist">Delete playlist</string>
+    <string name="deleteAlbum">Delete Album</string>
+    <string name="pySpotifyHost">pySpotify Host</string>
+    <string name="pySpotifyHostDescription">Host address for pySpotify service</string>
+    <string name="pySpotifyPort">pySpotify Port</string>
+    <string name="pySpotifyPortDescription">Port number for pySpotify service</string>
     <string name="defaultConnection">Default connection</string>
     <string name="preferredConnection">Preferred connection</string>
     <string name="chooseWLAN">Choose a WLAN network</string>

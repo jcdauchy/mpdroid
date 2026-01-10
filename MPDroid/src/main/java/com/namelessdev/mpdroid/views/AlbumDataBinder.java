@@ -65,6 +65,11 @@ public class AlbumDataBinder extends BaseDataBinder {
     protected void loadAlbumCovers(final AlbumViewHolder holder, final Album album) {
         final Artist artist = album.getArtist();
 
+        // Reset progress bar visibility when binding (important for view recycling)
+        if (holder.mCoverArtProgress != null) {
+            holder.mCoverArtProgress.setVisibility(View.INVISIBLE);
+        }
+
         if (artist == null || album.isUnknown()) {
             // full albums list or unknown album
             holder.mAlbumCover.setVisibility(View.GONE);

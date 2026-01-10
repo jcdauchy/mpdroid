@@ -78,4 +78,4 @@ echo ========================================
 echo Installation successful!
 echo ========================================
 echo.
-pause
+

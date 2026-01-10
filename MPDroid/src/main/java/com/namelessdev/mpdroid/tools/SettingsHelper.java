@@ -90,6 +90,28 @@ public class SettingsHelper {
         return result;
     }
 
+    /**
+     * Gets the pySpotify host setting.
+     * 
+     * @return The pySpotify host, or "192.168.1.201" if not set
+     */
+    public String getPySpotifyHost() {
+        return mSettings.getString("pySpotifyHost", "192.168.1.201").trim();
+    }
+
+    /**
+     * Gets the pySpotify port setting.
+     * 
+     * @return The pySpotify port, or 5000 if not set
+     */
+    public int getPySpotifyPort() {
+        try {
+            return Integer.parseInt(mSettings.getString("pySpotifyPort", "5000").trim());
+        } catch (final NumberFormatException e) {
+            return 5000;
+        }
+    }
+
     public final boolean updateConnectionSettings() {
         final String wifiSSID = getCurrentSSID();
         boolean result = true;

@@ -23,6 +23,8 @@ import com.namelessdev.mpdroid.views.holders.AlbumViewHolder;
 
 import org.a0z.mpd.item.Album;
 
+import android.view.View;
+
 import androidx.annotation.LayoutRes;
 
 public class AlbumGridDataBinder extends AlbumDataBinder {
@@ -35,6 +37,11 @@ public class AlbumGridDataBinder extends AlbumDataBinder {
 
     @Override
     protected void loadAlbumCovers(final AlbumViewHolder holder, final Album album) {
+        // Reset progress bar visibility when binding (important for view recycling)
+        if (holder.mCoverArtProgress != null) {
+            holder.mCoverArtProgress.setVisibility(View.INVISIBLE);
+        }
+
         final CoverAsyncHelper coverHelper = getCoverHelper(holder, 256);
         final AlbumInfo albumInfo = new AlbumInfo(album);
 

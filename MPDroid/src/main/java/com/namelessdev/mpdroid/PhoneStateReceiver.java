@@ -25,7 +25,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
+import android.os.Build;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
@@ -50,6 +53,11 @@ public class PhoneStateReceiver extends BroadcastReceiver {
 
     private static final String TAG = "PhoneStateReceiver";
 
+    /**
+     * Checks if device is connected to a local network (WiFi or Ethernet).
+     * Uses modern NetworkCallback API for Android 6.0+ (API 23+), falls back to
+     * deprecated API for older versions.
+     */
     private static boolean isLocalNetworkConnected() {
         final MPDApplication app = getApp();
         if (app == null) {
@@ -57,22 +65,43 @@ public class PhoneStateReceiver extends BroadcastReceiver {
         }
         final ConnectivityManager cm =
                 (ConnectivityManager) app.getSystemService(Context.CONNECTIVITY_SERVICE);
-        boolean isLocalNetwork = false;
+        if (cm == null) {
+            return false;
+        }
 
-        if (cm != null) {
-            final NetworkInfo networkInfo = cm.getActiveNetworkInfo();
-
-            if (networkInfo != null) {
-                final int networkType = networkInfo.getType();
-
-                if (networkInfo.isConnected() && networkType == ConnectivityManager.TYPE_WIFI ||
-                        networkType == ConnectivityManager.TYPE_ETHERNET) {
-                    isLocalNetwork = true;
+        // Use modern API for Android 6.0+ (API 23+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                final Network activeNetwork = cm.getActiveNetwork();
+                if (activeNetwork == null) {
+                    return false;
                 }
+                final NetworkCapabilities capabilities = cm.getNetworkCapabilities(activeNetwork);
+                if (capabilities == null) {
+                    return false;
+                }
+                // Check if network has WiFi or Ethernet transport
+                return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                       capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET);
+            } catch (final Exception e) {
+                Log.w(TAG, "Error checking network capabilities", e);
+                // Fall through to deprecated API
             }
         }
 
-        return isLocalNetwork;
+        // Fallback to deprecated API for older Android versions
+        try {
+            final NetworkInfo networkInfo = cm.getActiveNetworkInfo();
+            if (networkInfo != null && networkInfo.isConnected()) {
+                final int networkType = networkInfo.getType();
+                return networkType == ConnectivityManager.TYPE_WIFI ||
+                       networkType == ConnectivityManager.TYPE_ETHERNET;
+            }
+        } catch (final Exception e) {
+            Log.w(TAG, "Error checking network info", e);
+        }
+
+        return false;
     }
 
     private static void setPausedMarker(final boolean value) {

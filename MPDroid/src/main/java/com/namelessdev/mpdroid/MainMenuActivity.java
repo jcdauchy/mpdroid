@@ -39,7 +39,9 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
+import android.net.ConnectivityManager;
 import android.net.wifi.WifiManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.StrictMode;
@@ -699,8 +701,10 @@ public class MainMenuActivity extends MPDroidActivities.MPDroidActivity implemen
 
     @Override
     protected void onPause() {
-        if (DEBUG) {
+        try {
             unregisterReceiver(MPDConnectionHandler.getInstance());
+        } catch (final IllegalArgumentException e) {
+            // Receiver was not registered, ignore
         }
         super.onPause();
     }
@@ -723,9 +727,18 @@ public class MainMenuActivity extends MPDroidActivities.MPDroidActivity implemen
     protected void onResume() {
         super.onResume();
         mBackPressExitCount = 0;
-        if (DEBUG) {
-            registerReceiver(MPDConnectionHandler.getInstance(),
-                    new IntentFilter(WifiManager.NETWORK_STATE_CHANGED_ACTION));
+        // Always register network state receiver for reconnection support
+        try {
+            final IntentFilter filter = new IntentFilter();
+            filter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
+            filter.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
+            // For older Android versions, also listen to general connectivity changes
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+                filter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
+            }
+            registerReceiver(MPDConnectionHandler.getInstance(), filter);
+        } catch (final IllegalArgumentException e) {
+            // Receiver already registered, ignore
         }
     }
 

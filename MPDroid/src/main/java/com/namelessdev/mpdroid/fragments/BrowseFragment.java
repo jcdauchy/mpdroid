@@ -78,6 +78,8 @@ public abstract class BrowseFragment extends Fragment implements OnMenuItemClick
 
     public static final int GOTO_ARTIST = 5;
 
+    public static final int DELETE_ALBUM = 6;
+
     public static final int MAIN = 0;
 
     public static final int PLAYLIST = 3;

@@ -76,6 +76,8 @@ public class SongsFragment extends BrowseFragment {
 
     TextView mHeaderInfo;
 
+    TextView mHeaderPath;
+
     PopupMenu mPopupMenu;
 
     private AlbumCoverDownloadListener mCoverArtListener;
@@ -144,6 +146,29 @@ public class SongsFragment extends BrowseFragment {
             return new ArrayAdapter(getActivity(), new SongDataBinder(differentArtists), mItems);
         }
         return super.getCustomListAdapter();
+    }
+
+    /**
+     * Deletes the album by making a REST call to another application.
+     * This function will be implemented to make the REST API call.
+     * 
+     * Available album information:
+     * - mAlbum.getPath() - Album path (String, may be null)
+     * - mAlbum.getName() - Album name (String)
+     * - mAlbum.getArtist() - Artist object (may be null)
+     * - mAlbum.getYear() - Album year (long)
+     * - mAlbum.getSongCount() - Number of songs (long)
+     * - mAlbum.getDuration() - Total duration (long)
+     */
+    private void deleteAlbum() {
+        // TODO: Implement REST API call to delete album
+        // Available information:
+        // - Album path: mAlbum.getPath()
+        // - Album name: mAlbum.getName()
+        // - Artist: mAlbum.getArtist() != null ? mAlbum.getArtist().getName() : null
+        Log.d(TAG, "Delete Album called - Path: " + mAlbum.getPath() + 
+              ", Name: " + mAlbum.getName() + 
+              ", Artist: " + (mAlbum.getArtist() != null ? mAlbum.getArtist().getName() : "null"));
     }
 
     private AlbumInfo getFixedAlbumInfo() {
@@ -240,11 +265,13 @@ public class SongsFragment extends BrowseFragment {
         if (mCoverArt != null) {
             mHeaderArtist = (TextView) view.findViewById(R.id.tracks_artist);
             mHeaderInfo = (TextView) view.findViewById(R.id.tracks_info);
+            mHeaderPath = (TextView) view.findViewById(R.id.tracks_path);
             mCoverArtProgress = (ProgressBar) view.findViewById(R.id.albumCoverProgress);
             mAlbumMenu = (ImageButton) view.findViewById(R.id.album_menu);
         } else {
             mHeaderArtist = (TextView) headerView.findViewById(R.id.tracks_artist);
             mHeaderInfo = (TextView) headerView.findViewById(R.id.tracks_info);
+            mHeaderPath = (TextView) headerView.findViewById(R.id.tracks_path);
             mCoverArt = (ImageView) headerView.findViewById(R.id.albumCover);
             mCoverArtProgress = (ProgressBar) headerView.findViewById(R.id.albumCoverProgress);
             mAlbumMenu = (ImageButton) headerView.findViewById(R.id.album_menu);
@@ -275,6 +302,7 @@ public class SongsFragment extends BrowseFragment {
                 .add(Menu.NONE, ADD_REPLACE_PLAY, Menu.NONE, R.string.addAndReplacePlay);
         mPopupMenu.getMenu().add(Menu.NONE, ADD_PLAY, Menu.NONE, R.string.addAndPlay);
         mPopupMenu.getMenu().add(Menu.NONE, GOTO_ARTIST, Menu.NONE, R.string.goToArtist);
+        mPopupMenu.getMenu().add(Menu.NONE, DELETE_ALBUM, Menu.NONE, R.string.deleteAlbum);
 
         mPopupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
 
@@ -285,6 +313,8 @@ public class SongsFragment extends BrowseFragment {
                     final Intent intent = new Intent(getActivity(), SimpleLibraryActivity.class);
                     intent.putExtra("artist", mAlbum.getArtist());
                     startActivityForResult(intent, -1);
+                } else if (itemId == DELETE_ALBUM) {
+                    deleteAlbum();
                 } else {
                     mApp.oMPDAsyncHelper.execAsync(new Runnable() {
                         @Override
@@ -375,6 +405,7 @@ public class SongsFragment extends BrowseFragment {
     public void onDestroyView() {
         mHeaderArtist = null;
         mHeaderInfo = null;
+        mHeaderPath = null;
         mCoverArtListener.freeCoverDrawable();
         super.onDestroyView();
     }
@@ -439,6 +470,20 @@ public class SongsFragment extends BrowseFragment {
             final String artist = fixedAlbumInfo.getArtist();
             mHeaderArtist.setText(artist);
             mHeaderInfo.setText(getHeaderInfoString());
+            
+            // Display album path if available
+            if (mHeaderPath != null && mAlbum != null) {
+                final String albumPath = mAlbum.getPath();
+                if (albumPath != null && !albumPath.isEmpty()) {
+                    // Normalize path separators and prepend /music/ to show full path
+                    final String normalizedPath = albumPath.replace('\\', '/');
+                    mHeaderPath.setText("/music/" + normalizedPath);
+                    mHeaderPath.setVisibility(View.VISIBLE);
+                } else {
+                    mHeaderPath.setVisibility(View.GONE);
+                }
+            }
+            
             if (mCoverHelper != null) {
                 mCoverHelper.downloadCover(fixedAlbumInfo, true);
             } else {
