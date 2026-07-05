@@ -119,8 +119,6 @@
     <string name="buffering">버퍼링…</string>
     <string name="portStreaming">스트리밍 포트</string>
     <string name="portStreamingDescription">MPD 스트리밍 포트 (기본값: 8000)</string>
-    <string name="suffixStreaming">스트리밍 주소 덧붙임</string>
-    <string name="suffixStreamingDescription">스트림 주소 뒤에 덧붙입니다 (예. mpd.mp3)</string>
     <string name="aboutText1">MPDroid는 오픈 소스 소프트웨어로 소스코드는 http://github.com/abarisain/dmix를 방문하면 됩니다.</string>
     <string name="aboutText2">MPDroid는 PMix (http://code.google.com/p/pmix/) 에서 나왔습니다. 감사합니다!</string>
     <string name="search">찾기</string>

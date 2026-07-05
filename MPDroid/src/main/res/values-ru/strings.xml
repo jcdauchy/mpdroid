@@ -116,8 +116,6 @@
     <string name="buffering">Буферизация …</string>
     <string name="portStreaming">Порт потокового воспроизведения</string>
     <string name="portStreamingDescription">Порт потокового воспроизведения (По умолчанию: 8000)</string>
-    <string name="suffixStreaming">Окончание URL</string>
-    <string name="suffixStreamingDescription">Окончание, добавляемое к URL (напр. mpd.mp3)</string>
     <string name="aboutText1">MPDroid является свободным ПО. Вы можете получить исходный код по адресу http://github.com/abarisain/dmix !</string>
     <string name="aboutText2">MPDroid является форком PMix (http://code.google.com/p/pmix/). Спасибо им!\nЗамечания по переводу можно присылать по адресу kzudov.esp@gmail.com</string>
     <string name="search">Поиск</string>

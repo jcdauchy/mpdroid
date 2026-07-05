@@ -119,8 +119,6 @@
     <string name="buffering">缓冲 …</string>
     <string name="portStreaming">流媒体端口</string>
     <string name="portStreamingDescription">MPD流媒体端口 (默认: 8000)</string>
-    <string name="suffixStreaming">流媒体URL后缀</string>
-    <string name="suffixStreamingDescription">添加到流媒体URL后的后缀名 (例如. mpd.mp3)</string>
     <string name="aboutText1">MPDroid是开源软件. 请访问 http://github.com/abarisain/dmix 获取源代码!</string>
     <string name="aboutText2">MPDroid是继承自PMix (http://code.google.com/p/pmix/)而来. 多谢它们的工作 !</string>
     <string name="search">搜索</string>

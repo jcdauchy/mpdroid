@@ -144,12 +144,7 @@ public class SettingsHelper {
                 getStringSetting(getStringWithSSID("hostnameStreaming", wifiSSID));
         final int streamPort = getIntegerSetting(
                 getStringWithSSID("portStreaming", wifiSSID), DEFAULT_STREAMING_PORT);
-        String streamSuffix =
-                getStringSetting(getStringWithSSID("suffixStreaming", wifiSSID));
-        if (streamSuffix == null) {
-            streamSuffix = "";
-        }
-        connectionInfo.setStreamingServer(streamServer, streamPort, streamSuffix);
+        connectionInfo.setStreamingServer(streamServer, streamPort);
 
         final boolean persistentNotification =
                 getBooleanSetting(getStringWithSSID("persistentNotification", wifiSSID));

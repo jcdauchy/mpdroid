@@ -38,11 +38,10 @@ public class ConnectionInfo implements Parcelable {
             final String pPassword = source.readString();
             final String pStreamServer = source.readString();
             final int pStreamPort = source.readInt();
-            final String pStreamSuffix = source.readString();
             final boolean[] pBoolArray = source.createBooleanArray();
 
             return new ConnectionInfo(
-                    pServer, pPort, pPassword, pStreamServer, pStreamPort, pStreamSuffix,
+                    pServer, pPort, pPassword, pStreamServer, pStreamPort,
                     pBoolArray[0], pBoolArray[1], pBoolArray[2], pBoolArray[3]);
         }
 
@@ -70,8 +69,6 @@ public class ConnectionInfo implements Parcelable {
 
     public final String streamServer;
 
-    public final String streamSuffix;
-
     public final boolean streamingServerInfoChanged;
 
     public final boolean wasNotificationPersistent;
@@ -86,7 +83,6 @@ public class ConnectionInfo implements Parcelable {
 
         streamServer = null;
         streamPort = MPDCommand.DEFAULT_MPD_PORT;
-        streamSuffix = null;
 
         isNotificationPersistent = false;
         wasNotificationPersistent = false;
@@ -96,7 +92,7 @@ public class ConnectionInfo implements Parcelable {
 
     /** The private constructor, constructed by the Build inner class. */
     private ConnectionInfo(final String pServer, final int pPort, final String pPassword,
-            final String pStreamServer, final int pStreamPort, final String pStreamSuffix,
+            final String pStreamServer, final int pStreamPort,
             final boolean pIsNotificationPersistent, final boolean pWasNotificationPersistent,
             final boolean pServerInfoChanged, final boolean pStreamingInfoChanged) {
         super();
@@ -107,7 +103,6 @@ public class ConnectionInfo implements Parcelable {
 
         streamServer = pStreamServer;
         streamPort = pStreamPort;
-        streamSuffix = pStreamSuffix;
 
         isNotificationPersistent = pIsNotificationPersistent;
         wasNotificationPersistent = pWasNotificationPersistent;
@@ -141,7 +136,6 @@ public class ConnectionInfo implements Parcelable {
                 " streamServerInfoChanged: " + streamingServerInfoChanged +
                 " streamServer: " + streamServer +
                 " streamPort: " + streamPort +
-                " streamSuffix: " + streamSuffix +
                 " wasNotificationPersistent: " + wasNotificationPersistent;
     }
 
@@ -162,7 +156,6 @@ public class ConnectionInfo implements Parcelable {
         dest.writeString(password);
         dest.writeString(streamServer);
         dest.writeInt(streamPort);
-        dest.writeString(streamSuffix);
         dest.writeBooleanArray(boolArray);
     }
 
@@ -185,8 +178,6 @@ public class ConnectionInfo implements Parcelable {
         private int mStreamPort;
 
         private String mStreamServer = null;
-
-        private String mStreamSuffix;
 
         private boolean mStreamingServerInfoChanged;
 
@@ -213,7 +204,7 @@ public class ConnectionInfo implements Parcelable {
             }
 
             return new ConnectionInfo(mServer, mPort, mPassword,
-                    mStreamServer, mStreamPort, mStreamSuffix, mNotificationPersistent,
+                    mStreamServer, mStreamPort, mNotificationPersistent,
                     mWasNotificationPersistent, mServerInfoChanged, mStreamingServerInfoChanged);
         }
 
@@ -262,9 +253,6 @@ public class ConnectionInfo implements Parcelable {
                 result = true;
             } else if (connectionInfo.streamPort != mStreamPort) {
                 result = true;
-            } else if (connectionInfo.streamSuffix == null ||
-                    !connectionInfo.streamSuffix.equals(mStreamSuffix)) {
-                result = true;
             } else {
                 result = false;
             }
@@ -306,15 +294,13 @@ public class ConnectionInfo implements Parcelable {
             }
         }
 
-        public final void setStreamingServer(final String server, final int port,
-                final String suffix) {
+        public final void setStreamingServer(final String server, final int port) {
             if (server == null || server.isEmpty()) {
                 mStreamServer = mServer;
             } else {
                 mStreamServer = server;
             }
             mStreamPort = port;
-            mStreamSuffix = suffix;
         }
     }
 }

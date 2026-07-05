@@ -273,8 +273,7 @@ public final class StreamHandler implements
 
     /** Get the current server streaming URL. */
     private String getStreamSource() {
-        return "http://" + mConnectionInfo.streamServer + ':'
-                + mConnectionInfo.streamPort + '/' + mConnectionInfo.streamSuffix;
+        return "http://" + mConnectionInfo.streamServer + ':' + mConnectionInfo.streamPort + '/';
     }
 
     /**

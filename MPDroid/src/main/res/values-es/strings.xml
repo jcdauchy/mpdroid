@@ -121,8 +121,6 @@
     <string name="buffering">Almacenando en buffer…</string>
     <string name="portStreaming">Puerto de transmisión</string>
     <string name="portStreamingDescription">Puerto de transmisión MPD (Por defecto: 8000)</string>
-    <string name="suffixStreaming">Sufijo de la URL de la transmisión</string>
-    <string name="suffixStreamingDescription">Sufijo a anexar a la URL de la transmisión (ej. mpd.mp3)</string>
     <string name="aboutText1">MPDroid es software open-source. Visita http://github.com/abarisain/dmix para obtener el código fuente !</string>
     <string name="aboutText2">MPDroid es un fork de PMix (http://code.google.com/p/pmix/). Gracias a ellos !</string>
     <string name="search">Buscar</string>

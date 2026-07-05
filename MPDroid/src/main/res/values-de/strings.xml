@@ -123,8 +123,6 @@
     <string name="buffering">Zwischenspeichern …</string>
     <string name="portStreaming">Streaming-Port</string>
     <string name="portStreamingDescription">MPD-Streaming-Port (Standard: 8000)</string>
-    <string name="suffixStreaming">Streaming-URL-Suffix</string>
-    <string name="suffixStreamingDescription">Dateiendung für Stream-URL (z.B. mpd.mp3)</string>
     <string name="aboutText1">MPDroid ist Open Source. Quelltext unter http://github.com/abarisain/dmix</string>
     <string name="aboutText2">MPDroid ist ein Fork von PMix\n (http://code.google.com/p/pmix/). Bedanke dich!</string>
     <string name="search">Suchen</string>

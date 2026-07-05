@@ -118,8 +118,6 @@
     <string name="buffering">Кешування…</string>
     <string name="portStreaming">Порт потоку</string>
     <string name="portStreamingDescription">Порт потоку MPD (за замовчуванням: 8000)</string>
-    <string name="suffixStreaming">Url суфікс потоку</string>
-    <string name="suffixStreamingDescription">Сіфукс, що додаватиметься до url потоку(напр. mpd.mp3)</string>
     <string name="aboutText1">MPDroid є програмним забеспеченням з відкритим кодом. Завітайте до http://github.com/abarisain/dmix для його отримання!</string>
     <string name="aboutText2">MPDroid - це форк PMix (http://code.google.com/p/pmix/). Подяка їм!</string>
     <string name="search">Пошук</string>
