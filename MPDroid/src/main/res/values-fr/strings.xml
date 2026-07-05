@@ -101,6 +101,25 @@
     <string name="notInRange">Pas à portée, enregistré</string>
     <string name="playlistDeleted">Playlist %s supprimée</string>
     <string name="deletePlaylist">Supprimer la Playlist</string>
+    <string name="pySpotifySettings">Paramètres pySpotify</string>
+    <string name="pySpotifySettingsDescription">Hôte, port et identifiants pour le service pySpotify</string>
+    <string name="pySpotifyHost">Hôte pySpotify</string>
+    <string name="pySpotifyHostDescription">Adresse de l\'hôte pour le service pySpotify</string>
+    <string name="pySpotifyPort">Port pySpotify</string>
+    <string name="pySpotifyPortDescription">Numéro de port pour le service pySpotify</string>
+    <string name="pySpotifyUseHttps">Utiliser HTTPS</string>
+    <string name="pySpotifyUseHttpsDescription">À activer si le service pySpotify est servi en HTTPS (ex. un nom de domaine public)</string>
+    <string name="pySpotifyUsername">Nom d\'utilisateur</string>
+    <string name="pySpotifyUsernameDescription">Nom d\'utilisateur pour le service pySpotify, si une connexion est requise</string>
+    <string name="pySpotifyPassword">Mot de passe</string>
+    <string name="pySpotifyPasswordDescription">Mot de passe pour le service pySpotify, si une connexion est requise</string>
+    <string name="pySpotifyTestConnection">Tester la connexion</string>
+    <string name="pySpotifyTestConnectionDescription">Vérifie que le service pySpotify est accessible avec les paramètres ci-dessus</string>
+    <string name="pySpotifyTestingConnection">Test de connexion en cours…</string>
+    <string name="pySpotifyTestSuccess">Connexion réussie</string>
+    <string name="pySpotifyTestAuthFailed">Échec de l\'authentification. Vérifiez le nom d\'utilisateur et le mot de passe.</string>
+    <string name="pySpotifyTestServerError">Le serveur a répondu avec l\'erreur %1$d</string>
+    <string name="pySpotifyTestConnectionFailed">Échec de la connexion : %1$s</string>
     <string name="preferredConnection">Connexion preferée</string>
     <string name="chooseWLAN">Choisissez un réseau wifi</string>
     <string name="wlanBasedSettings">Connexion par Wi-Fi</string>
@@ -257,6 +276,7 @@
 
     <!-- Begin StreamHandler Specific Strings -->
     <string name="audioFocusFailed">Impossible de démarrer le streaming : Une autre application diffuse déjà de la musique.</string>
+    <string name="streamBufferedAhead">%1$.1fs d\'avance en tampon</string>
     <string name="streamError">%1$s erreur du flux: %2$s.</string>
     <string name="streamPreparationError">Cette erreur est causée par un changement du status serveur lors de la préparation du flux.</string>
     <string name="streamSourceError">Echec lors de la définition de la source du flux: %1$s.</string>

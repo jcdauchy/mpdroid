@@ -97,6 +97,9 @@ public class MPDApplication extends Application implements
 
     private boolean mIsStreamActive = false;
 
+    /** How far ahead of the playback position the stream is currently buffered, in milliseconds. */
+    private volatile int mStreamBufferedMs = 0;
+
     private ServiceBinder mServiceBinder;
 
     private SharedPreferences mSettings = null;
@@ -419,6 +422,9 @@ public class MPDApplication extends Application implements
                 mIsStreamActive = ServiceBinder.TRUE == msg.arg1;
                 mServiceBinder.setServicePersistent(true);
                 break;
+            case StreamHandler.BUFFER_STATUS:
+                mStreamBufferedMs = msg.arg1;
+                break;
             case ServiceBinder.SET_PERSISTENT:
                 if (!isNotificationPersistent() || ServiceBinder.TRUE == msg.arg1) {
                     mServiceBinder.setServicePersistent(ServiceBinder.TRUE == msg.arg1);
@@ -489,6 +495,16 @@ public class MPDApplication extends Application implements
                     mIsStreamActive);
         }
         return mServiceBinder != null && mServiceBinder.isServiceBound() && mIsStreamActive;
+    }
+
+    /**
+     * Gets how far ahead of the current playback position the stream has buffered.
+     *
+     * @return The buffered-ahead duration, in milliseconds. Only meaningful while
+     * {@link #isStreamActive()} is true.
+     */
+    public final int getStreamBufferedMs() {
+        return mStreamBufferedMs;
     }
 
     public final boolean isTabletUiEnabled() {

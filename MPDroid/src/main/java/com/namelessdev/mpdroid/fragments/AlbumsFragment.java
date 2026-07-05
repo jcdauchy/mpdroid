@@ -339,27 +339,30 @@ public class AlbumsFragment extends BrowseFragment {
         final String originalPath = album.getPath();
         
         // Get pySpotify settings
-        final com.namelessdev.mpdroid.tools.SettingsHelper settingsHelper = 
+        final com.namelessdev.mpdroid.tools.SettingsHelper settingsHelper =
                 new com.namelessdev.mpdroid.tools.SettingsHelper(mApp.oMPDAsyncHelper);
-        final String pySpotifyHost = settingsHelper.getPySpotifyHost();
-        final int pySpotifyPort = settingsHelper.getPySpotifyPort();
-        
+        final String pySpotifyBaseUrl = settingsHelper.getPySpotifyBaseUrl();
+        final String pySpotifyAuthHeader = settingsHelper.getPySpotifyAuthHeader();
+
         // Store normalized path in final variable for use in inner class
         final String normalizedPath = albumPath;
-        
+
         // Execute REST call in background thread
         mApp.oMPDAsyncHelper.execAsync(new Runnable() {
             @Override
             public void run() {
                 try {
-                    final String urlString = "http://" + pySpotifyHost + ":" + pySpotifyPort + "/api/v1/delete";
+                    final String urlString = pySpotifyBaseUrl + "/api/v1/delete";
                     final URL url = new URL(urlString);
                     final HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                    
+
                     try {
                         connection.setRequestMethod("DELETE");
                         connection.setRequestProperty("accept", "application/json");
                         connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+                        if (pySpotifyAuthHeader != null) {
+                            connection.setRequestProperty("Authorization", pySpotifyAuthHeader);
+                        }
                         connection.setDoOutput(true);
                         connection.setConnectTimeout(10000);
                         connection.setReadTimeout(10000);

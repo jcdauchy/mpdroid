@@ -59,6 +59,17 @@
     </PreferenceScreen>
 
     <PreferenceScreen
+        android:key="pySpotifyScreen"
+        android:summary="@string/pySpotifySettingsDescription"
+        android:title="@string/pySpotifySettings">
+
+        <intent
+            android:action="android.intent.action.MAIN"
+            android:targetClass="com.namelessdev.mpdroid.PySpotifySettings"
+            android:targetPackage="com.namelessdev.mpdroid" />
+    </PreferenceScreen>
+
+    <PreferenceScreen
         android:key="coverArtScreen"
         android:summary="@string/coverArtDescription"
         android:title="@string/coverArtTitle">

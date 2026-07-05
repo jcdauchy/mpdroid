@@ -23,23 +23,22 @@ import com.namelessdev.mpdroid.helpers.MPDControl;
 import org.a0z.mpd.MPDStatus;
 
 import android.content.res.Resources;
-import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.media.AudioManager.OnAudioFocusChangeListener;
-import android.media.MediaPlayer;
-import android.media.MediaPlayer.OnCompletionListener;
-import android.media.MediaPlayer.OnErrorListener;
-import android.media.MediaPlayer.OnInfoListener;
-import android.media.MediaPlayer.OnPreparedListener;
-import android.os.Build;
 import android.os.Handler;
-import android.os.Message;
-import android.os.PowerManager;
-import androidx.annotation.StringRes;
+import android.os.Looper;
 import android.util.Log;
 import android.widget.Toast;
 
-import java.io.IOException;
+import androidx.annotation.StringRes;
+
+import androidx.media3.common.AudioAttributes;
+import androidx.media3.common.C;
+import androidx.media3.common.MediaItem;
+import androidx.media3.common.PlaybackException;
+import androidx.media3.common.Player;
+import androidx.media3.exoplayer.DefaultLoadControl;
+import androidx.media3.exoplayer.ExoPlayer;
 
 /**
  * StreamHandler hooks Android's audio framework to the
@@ -47,16 +46,7 @@ import java.io.IOException;
  *
  * @author Arnaud Barisain Monrose (Dream_Team)
  */
-public final class StreamHandler implements
-        /**
-         * OnBufferingUpdateListener is not used because it depends on a stream completion time.
-         */
-        Handler.Callback,
-        OnAudioFocusChangeListener,
-        OnCompletionListener,
-        OnErrorListener,
-        OnInfoListener,
-        OnPreparedListener {
+public final class StreamHandler implements OnAudioFocusChangeListener, Player.Listener {
 
     /** This is the class unique Binder identifier. */
     static final int LOCAL_UID = 400;
@@ -85,6 +75,12 @@ public final class StreamHandler implements
     /** Like STREAMING_STOP, but does allows streaming to continue on audio state change. */
     static final int STREAMING_PAUSE = LOCAL_UID + 8;
 
+    /**
+     * Reports how far ahead of the playback position ExoPlayer currently has buffered, in
+     * milliseconds, as the message's {@code arg1}.
+     */
+    public static final int BUFFER_STATUS = LOCAL_UID + 9;
+
     private static final boolean DEBUG = MPDroidService.DEBUG;
 
     /**
@@ -93,8 +89,14 @@ public final class StreamHandler implements
      */
     private static final int INVALID_INT = -1;
 
-    /** Workaround to delay preparation of stream on Android 4.4.2 and earlier. */
-    private static final int PREPARE_ASYNC = 1;
+    /** How often the buffered-ahead duration is reported to clients, in milliseconds. */
+    private static final long BUFFER_STATUS_INTERVAL_MS = 1000L;
+
+    /** How far ahead of playback position ExoPlayer is allowed to buffer, in milliseconds. */
+    private static final int MAX_BUFFER_MS = 60_000;
+
+    /** How far ahead ExoPlayer tries to stay buffered once already playing, in milliseconds. */
+    private static final int MIN_BUFFER_MS = 15_000;
 
     private static final String TAG = "StreamHandler";
 
@@ -107,7 +109,16 @@ public final class StreamHandler implements
     private final ConnectionInfo mConnectionInfo
             = MPDroidService.MPD_ASYNC_HELPER.getConnectionSettings();
 
-    private final Handler mHandler = new Handler(this);
+    /** Handler used to periodically poll and report the current buffered-ahead duration. */
+    private final Handler mBufferStatusHandler = new Handler(Looper.getMainLooper());
+
+    private final Runnable mBufferStatusRunnable = new Runnable() {
+        @Override
+        public void run() {
+            reportBufferStatus();
+            mBufferStatusHandler.postDelayed(this, BUFFER_STATUS_INTERVAL_MS);
+        }
+    };
 
     /** The service context used to acquire the wake lock. */
     private final MPDroidService mServiceContext;
@@ -124,16 +135,16 @@ public final class StreamHandler implements
     /** Is MPD playing? */
     private boolean mIsPlaying = false;
 
-    private MediaPlayer mMediaPlayer = null;
+    private ExoPlayer mPlayer = null;
 
-    /** Keep track when MediaPlayer is preparing a stream. */
+    /** Keep track of the initial buffering, before the first playback of a stream start. */
     private boolean mPreparingStream = false;
 
     /** Service handler used for communicating with service. */
     private Handler mServiceHandler = null;
 
     /**
-     * The {@code MediaPlayer} streaming interface for the {@code MPDroidService},
+     * The {@code ExoPlayer} streaming interface for the {@code MPDroidService},
      *
      * @param serviceContext The {@code MPDroidService} instance/context.
      * @param serviceHandler The {@code MPDroidService} {@code Handler}.
@@ -151,36 +162,6 @@ public final class StreamHandler implements
         mServiceContext = serviceContext;
         mAudioManager = audioManager;
         mServiceHandler = serviceHandler;
-    }
-
-    /**
-     * Translates MediaPlayer.OnErrorListener error codes to applicable resource ids for a local
-     * translated string.
-     *
-     * @param resId MediaPlayer.OnErrorListener constant.
-     * @return Local resource id for a translated string.
-     */
-    private static int getErrorDetails(final int resId) {
-        final int errorExtraResId;
-
-        switch (resId) {
-            case MediaPlayer.MEDIA_ERROR_TIMED_OUT:
-                errorExtraResId = R.string.mediaPlayerErrorTimedOut;
-                break;
-            case MediaPlayer.MEDIA_ERROR_MALFORMED:
-                errorExtraResId = R.string.mediaPlayerErrorMalformed;
-                break;
-            case MediaPlayer.MEDIA_ERROR_UNSUPPORTED:
-                errorExtraResId = R.string.mediaPlayerErrorUnsupported;
-                break;
-            case MediaPlayer.MEDIA_ERROR_IO:
-                /** Fall through, nothing else is possible. */
-            default:
-                errorExtraResId = R.string.mediaPlayerErrorIO;
-                break;
-        }
-
-        return errorExtraResId;
     }
 
     /**
@@ -217,6 +198,9 @@ public final class StreamHandler implements
             case STREAMING_PAUSE:
                 result = "STREAMING_PAUSE";
                 break;
+            case BUFFER_STATUS:
+                result = "BUFFER_STATUS";
+                break;
             default:
                 result = "{unknown}: " + what;
                 break;
@@ -229,91 +213,22 @@ public final class StreamHandler implements
         if (DEBUG) {
             Log.d(TAG, "StreamHandler.beginStreaming()");
         }
-        if (mMediaPlayer == null) {
+        if (mPlayer == null) {
             windUpResources();
         }
 
         mServiceHandler.sendEmptyMessage(BUFFERING_BEGIN);
         final String streamSource = getStreamSource();
-        final long asyncIdle = 1500L;
         mPreparingStream = true;
         mServiceHandler.removeMessages(STOP);
 
-        mMediaPlayer.reset();
-        mMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-        try {
-            mMediaPlayer.setDataSource(streamSource);
-        } catch (final IOException e) {
-            final Resources resources = mServiceContext.getResources();
-            final String error = resources.getString(R.string.streamSourceError, streamSource);
-
-            showErrorToUser(error, e);
-            windDownResources(BUFFERING_END);
-        }
-
-        /**
-         * With MediaPlayer, there is a racy bug which affects, minimally, Android KitKat and lower.
-         * If mediaPlayer.prepareAsync() is called too soon after mediaPlayer.setDataSource(), and
-         * after the initial mediaPlayer.play(), general and non-specific errors are usually emitted
-         * for the first few 100 milliseconds.
-         *
-         * Sometimes, these errors result in nagging Log errors, sometimes these errors result in
-         * unrecoverable errors. This handler sets up a 1.5 second delay between
-         * mediaPlayer.setDataSource() and mediaPlayer.AsyncPrepare() whether first play after
-         * handler start or not.
-         *
-         * The magic number here can be adjusted if there are any more problems. I have witnessed
-         * these errors occur at 750ms, but never higher. It's worth doubling, even in optimal
-         * conditions, stream buffering is pretty slow anyhow. Adjust if necessary.
-         *
-         * This order is very specific and if interrupted can cause big problems.
-         */
-        mHandler.sendEmptyMessageDelayed(PREPARE_ASYNC, asyncIdle); /** Go to onPrepared() */
+        mPlayer.setMediaItem(MediaItem.fromUri(streamSource));
+        mPlayer.prepare();
     }
 
     /** Get the current server streaming URL. */
     private String getStreamSource() {
         return "http://" + mConnectionInfo.streamServer + ':' + mConnectionInfo.streamPort + '/';
-    }
-
-    /**
-     * The {@code Handler.Callback} method callback used to communicate with the service.
-     *
-     * @param msg The incoming message from the service.
-     * @return True if the incoming message was handled by this method, false otherwise.
-     */
-    @Override
-    public boolean handleMessage(final Message msg) {
-        boolean result = false;
-
-        if (msg.what == PREPARE_ASYNC) {
-            /**
-             * If MediaPlayer is null, the stream has already been
-             * stopped; action is/has already been taken.
-             */
-            if (mIsPlaying && mMediaPlayer != null) {
-                if (DEBUG) {
-                    Log.d(TAG, "Start mediaPlayer buffering.");
-                }
-
-                try {
-                    mMediaPlayer.prepareAsync();
-                } catch (final IllegalStateException e) {
-                    showErrorToUser(R.string.streamPreparationError, e);
-                    windDownResources(BUFFERING_END);
-                }
-                /**
-                 * Between here and onPrepared, if the media server
-                 * stream pauses, error handling workarounds will be used.
-                 */
-            } else {
-                mPreparingStream = false;
-                windDownResources(STREAMING_PAUSE);
-            }
-            result = true;
-        }
-
-        return result;
     }
 
     boolean isActive() {
@@ -332,31 +247,31 @@ public final class StreamHandler implements
             Log.d(TAG, "StreamHandler.onAudioFocusChange() with " + focusChange);
         }
 
-        if (mMediaPlayer != null) {
+        if (mPlayer != null) {
             final float duckVolume = 0.2f;
 
             switch (focusChange) {
                 case AudioManager.AUDIOFOCUS_GAIN:
-                    if (mMediaPlayer.isPlaying()) {
+                    if (mPlayer.isPlaying()) {
                         if (DEBUG) {
                             Log.d(TAG, "Regaining after ducked transient loss.");
                         }
-                        mMediaPlayer.setVolume(1.0f, 1.0f);
+                        mPlayer.setVolume(1.0f);
                     } else if (!mPreparingStream) {
                         if (DEBUG) {
                             Log.d(TAG, "Coming out of transient loss.");
                         }
-                        mMediaPlayer.start();
+                        mPlayer.play();
                     }
                     break;
                 case AudioManager.AUDIOFOCUS_LOSS:
                     MPDControl.run(MPDroidService.MPD_ASYNC_HELPER.oMPD, MPDControl.ACTION_PAUSE);
                     break;
                 case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
-                    mMediaPlayer.pause();
+                    mPlayer.pause();
                     break;
                 case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
-                    mMediaPlayer.setVolume(duckVolume, duckVolume);
+                    mPlayer.setVolume(duckVolume);
                     break;
                 default:
                     break;
@@ -365,48 +280,48 @@ public final class StreamHandler implements
     }
 
     /**
-     * A MediaPlayer callback to be invoked when playback of a media source has completed.
+     * An ExoPlayer callback invoked whenever the playback state changes, including the initial
+     * buffer-up and any later stalls/rebuffers.
      *
-     * @param mp The MediaPlayer object that reached the end of the stream.
+     * @param playbackState The new {@link Player.State}.
      */
     @Override
-    public void onCompletion(final MediaPlayer mp) {
+    public void onPlaybackStateChanged(final int playbackState) {
         if (DEBUG) {
-            Log.d(TAG, "StreamHandler.onCompletion()");
+            Log.d(TAG, "onPlaybackStateChanged(" + playbackState + ") received.");
         }
 
-        /**
-         * If MPD is restarted during streaming, onCompletion() will be called.
-         * onStateChange() won't be called. If we still detect playing, restart the stream.
-         */
-        if (mIsPlaying) {
-            tryToStream();
-        } else {
-            /**
-             * The only way we make it here is with an empty playlist. Don't send a
-             * message to the notification, it already knows to stop on empty playlist.
-             */
-            windDownResources(INVALID_INT);
+        switch (playbackState) {
+            case Player.STATE_BUFFERING:
+                mServiceHandler.sendEmptyMessage(BUFFERING_BEGIN);
+                break;
+            case Player.STATE_READY:
+                if (mPreparingStream) {
+                    onInitialBufferComplete();
+                } else {
+                    mServiceHandler.sendEmptyMessage(BUFFERING_END);
+                }
+                break;
+            case Player.STATE_ENDED:
+                onStreamEnded();
+                break;
+            default:
+                break;
         }
     }
 
     /**
-     * A MediaPlayer callback to be invoked when there has been an error during an asynchronous
-     * operation (other errors will throw exceptions at method call time).
+     * An ExoPlayer callback to be invoked when there has been an error during playback.
      *
-     * @param mp    The current mediaPlayer.
-     * @param what  The type of error that has occurred.
-     * @param extra An extra code, specific to the error. Typically implementation dependent.
-     * @return True if the method handled the error, false if it didn't. Returning false, or not
-     * having an OnErrorListener at all, will cause the OnCompletionListener to be called.
+     * @param error The error that occurred.
      */
     @Override
-    public boolean onError(final MediaPlayer mp, final int what, final int extra) {
+    public void onPlayerError(final PlaybackException error) {
         if (DEBUG) {
-            Log.d(TAG, "onError(mp, " + what + ", " + extra + ") received.");
+            Log.d(TAG, "onPlayerError() received.", error);
         }
 
-        showErrorToUser(what, extra);
+        showErrorToUser(R.string.mediaPlayerErrorIO, error);
 
         final int maxError = 4;
 
@@ -427,52 +342,14 @@ public final class StreamHandler implements
         windDownResources(STREAMING_STOP);
 
         mErrorIterator += 1;
-        return true;
     }
 
     /**
-     * Called to indicate an info or a warning.
-     *
-     * @param mp    The {@code MediaPlayer} the info pertains to.
-     * @param what  The type of info or warning.
-     * @param extra An extra code, specific to the info. Typically implementation dependent.
-     * @return True if the method handled the info, false if it didn't. Returning false, or not
-     * having an OnErrorListener at all, will cause the info to be discarded.
+     * Handles the first time the player reaches {@link Player#STATE_READY} after a call to
+     * {@link #beginStreaming()}, analogous to the old {@code MediaPlayer.OnPreparedListener}.
      */
-    @Override
-    public boolean onInfo(final MediaPlayer mp, final int what, final int extra) {
-        boolean result = true;
-
-        if (DEBUG) {
-            Log.d(TAG, "onInfo(" + what + ", " + extra + ") received.");
-        }
-
-        switch (what) {
-            case MediaPlayer.MEDIA_INFO_BUFFERING_START:
-                mServiceHandler.sendEmptyMessage(BUFFERING_BEGIN);
-                break;
-            case MediaPlayer.MEDIA_INFO_BUFFERING_END:
-                mServiceHandler.sendEmptyMessage(BUFFERING_END);
-                break;
-            default:
-                result = false;
-        }
-
-        return result;
-    }
-
-    /**
-     * A MediaPlayer callback used when the media file is ready for playback.
-     *
-     * @param mp The MediaPlayer that is ready for playback.
-     */
-    @Override
-    public void onPrepared(final MediaPlayer mp) {
+    private void onInitialBufferComplete() {
         final int focusResult;
-
-        if (DEBUG) {
-            Log.d(TAG, "StreamHandler.onPrepared()");
-        }
 
         if (mIsPlaying && mIsActive) {
             focusResult = mAudioManager.requestAudioFocus(this, AudioManager.STREAM_MUSIC,
@@ -483,7 +360,7 @@ public final class StreamHandler implements
 
         if (focusResult == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
             mServiceHandler.sendEmptyMessage(BUFFERING_END);
-            mMediaPlayer.start();
+            mPlayer.play();
         } else {
             if (mIsActive && mIsPlaying) {
                 showErrorToUser(R.string.audioFocusFailed);
@@ -498,42 +375,23 @@ public final class StreamHandler implements
     }
 
     /**
-     * Reports the content of the MediaPlayer errorDetails to the user via a Log and Toast.
-     *
-     * @param errorType    The type of errorDetails the occurred.
-     * @param errorDetails Implementation dependent specific error details.
+     * Handles the stream reaching {@link Player#STATE_ENDED}, analogous to the old
+     * {@code MediaPlayer.OnCompletionListener}.
      */
-    private void showErrorToUser(final int errorType, final int errorDetails) {
-        final Resources resources = mServiceContext.getResources();
-        final String errorTypeString;
-
-        if (errorType == MediaPlayer.MEDIA_ERROR_SERVER_DIED) {
-            errorTypeString = resources.getString(R.string.mediaPlayerErrorServerDied);
+    private void onStreamEnded() {
+        /**
+         * If MPD is restarted during streaming, the stream will end. stateChanged() won't be
+         * called. If we still detect playing, restart the stream.
+         */
+        if (mIsPlaying) {
+            tryToStream();
         } else {
-            errorTypeString = resources.getString(R.string.mediaPlayerErrorUnknown);
+            /**
+             * The only way we make it here is with an empty playlist. Don't send a
+             * message to the notification, it already knows to stop on empty playlist.
+             */
+            windDownResources(INVALID_INT);
         }
-
-        final String errorDetailsString = resources.getString(getErrorDetails(errorDetails));
-
-        showErrorToUser(errorTypeString + ' ' + errorDetailsString);
-    }
-
-    /**
-     * Reports the contents of an error string to the user via a Log and Toast.
-     *
-     * @param userOutput The error to show the user.
-     */
-    private void showErrorToUser(final String userOutput) {
-        showErrorToUser(userOutput, null);
-    }
-
-    /**
-     * Reports the contents of an error string to the user via a Log and Toast.
-     *
-     * @param resId The resource ID of the translated string to show the user.
-     */
-    private void showErrorToUser(@StringRes final int resId) {
-        showErrorToUser(resId, null);
     }
 
     /**
@@ -552,7 +410,17 @@ public final class StreamHandler implements
     /**
      * Reports the contents of an error string to the user via a Log and Toast.
      *
+     * @param resId The resourceID of the translated string to show the user.
+     */
+    private void showErrorToUser(@StringRes final int resId) {
+        showErrorToUser(resId, null);
+    }
+
+    /**
+     * Reports the contents of an error string to the user via a Log and Toast.
+     *
      * @param userOutput The error to show the user.
+     * @param e          The exception to go to the {@code Log}, may be null.
      */
     private void showErrorToUser(final String userOutput, final Exception e) {
         if (e == null) {
@@ -597,7 +465,7 @@ public final class StreamHandler implements
                     tryToStream();
                     break;
                 case MPDStatus.STATE_STOPPED:
-                    /** Detect final song and let onCompletion handle it */
+                    /** Detect final song and let onStreamEnded() handle it */
                     if (mpdStatus.getNextSongPos() == -1 || mpdStatus.getPlaylistLength() == 0) {
                         break;
                     }
@@ -624,8 +492,6 @@ public final class StreamHandler implements
         if (DEBUG) {
             Log.d(TAG, "StreamHandler.stop()");
         }
-
-        mHandler.removeMessages(PREPARE_ASYNC);
 
         mAudioManager.abandonAudioFocus(this);
 
@@ -662,46 +528,65 @@ public final class StreamHandler implements
             mServiceHandler.sendEmptyMessage(action);
         }
 
-        if (mMediaPlayer != null) {
-            /**
-             * Cannot run reset/release when buffering, MediaPlayer will ANR or crash MPDroid, at
-             * least on Android 4.4.2. Worst case, not resetting may cause a stale buffer to play at
-             * the beginning and restart buffering; not perfect, but this is a pretty good solution.
-             */
-            if (mPreparingStream) {
-                Log.w(TAG, "Media player paused during streaming, workarounds running.");
-                mHandler.removeMessages(PREPARE_ASYNC);
-                mPreparingStream = false;
-            } else {
-                mMediaPlayer.release();
-                mMediaPlayer = null;
-            }
+        mBufferStatusHandler.removeCallbacks(mBufferStatusRunnable);
+
+        if (mPlayer != null) {
+            mPlayer.release();
+            mPlayer = null;
+        }
+
+        mPreparingStream = false;
+    }
+
+    /**
+     * Reports how far ahead of the current playback position ExoPlayer has buffered, so the UI
+     * can show it (e.g. in the "Now Playing" screen).
+     */
+    private void reportBufferStatus() {
+        if (mPlayer != null) {
+            final int bufferedAheadMs = (int) Math.max(0,
+                    mPlayer.getBufferedPosition() - mPlayer.getCurrentPosition());
+            mServiceHandler.obtainMessage(BUFFER_STATUS, bufferedAheadMs, 0).sendToTarget();
         }
     }
 
     /**
      * This happens at the beginning of beginStreaming() to populate all
-     * necessary resources for handling the MediaPlayer stream.
+     * necessary resources for handling the ExoPlayer stream.
      */
     private void windUpResources() {
         if (DEBUG) {
             Log.d(TAG, "Winding up resources.");
         }
 
-        mMediaPlayer = new MediaPlayer();
-        mMediaPlayer.setOnCompletionListener(this);
-        mMediaPlayer.setOnPreparedListener(this);
-        mMediaPlayer.setOnErrorListener(this);
-        mMediaPlayer.setWakeMode(mServiceContext, PowerManager.PARTIAL_WAKE_LOCK);
+        /**
+         * MPD's httpd output is a continuous, unbounded stream with no fixed end and no
+         * Content-Length. A generous buffer window lets ExoPlayer read well ahead of the
+         * playback position so brief network hiccups don't cause an audible stall.
+         */
+        final DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
+                .setBufferDurationsMs(
+                        MIN_BUFFER_MS,
+                        MAX_BUFFER_MS,
+                        DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
+                        DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS)
+                .build();
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            final AudioAttributes audioAttributes =
-                    new AudioAttributes.Builder()
-                            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                            .setUsage(AudioAttributes.USAGE_MEDIA)
-                            .build();
+        mPlayer = new ExoPlayer.Builder(mServiceContext)
+                .setLoadControl(loadControl)
+                .build();
+        mPlayer.addListener(this);
+        mPlayer.setWakeMode(C.WAKE_MODE_NETWORK);
 
-            mMediaPlayer.setAudioAttributes(audioAttributes);
-        }
+        final AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                .setUsage(C.USAGE_MEDIA)
+                .build();
+
+        /** Audio focus is requested/abandoned manually (see onAudioFocusChange()). */
+        mPlayer.setAudioAttributes(audioAttributes, false);
+
+        mBufferStatusHandler.removeCallbacks(mBufferStatusRunnable);
+        mBufferStatusHandler.post(mBufferStatusRunnable);
     }
 }

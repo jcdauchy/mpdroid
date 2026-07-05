@@ -108,10 +108,25 @@
     <string name="playlistDeleted">Playlist %s deleted</string>
     <string name="deletePlaylist">Delete playlist</string>
     <string name="deleteAlbum">Delete Album</string>
+    <string name="pySpotifySettings">pySpotify settings</string>
+    <string name="pySpotifySettingsDescription">Host, port and credentials for the pySpotify service</string>
     <string name="pySpotifyHost">pySpotify Host</string>
     <string name="pySpotifyHostDescription">Host address for pySpotify service</string>
     <string name="pySpotifyPort">pySpotify Port</string>
     <string name="pySpotifyPortDescription">Port number for pySpotify service</string>
+    <string name="pySpotifyUseHttps">Use HTTPS</string>
+    <string name="pySpotifyUseHttpsDescription">Enable if the pySpotify service is served over HTTPS (e.g. a public domain)</string>
+    <string name="pySpotifyUsername">Username</string>
+    <string name="pySpotifyUsernameDescription">Username for the pySpotify service, if it requires a login</string>
+    <string name="pySpotifyPassword">Password</string>
+    <string name="pySpotifyPasswordDescription">Password for the pySpotify service, if it requires a login</string>
+    <string name="pySpotifyTestConnection">Test connection</string>
+    <string name="pySpotifyTestConnectionDescription">Check that the pySpotify service is reachable with the settings above</string>
+    <string name="pySpotifyTestingConnection">Testing connection…</string>
+    <string name="pySpotifyTestSuccess">Connection successful</string>
+    <string name="pySpotifyTestAuthFailed">Authentication failed. Check the username and password.</string>
+    <string name="pySpotifyTestServerError">Server responded with error %1$d</string>
+    <string name="pySpotifyTestConnectionFailed">Connection failed: %1$s</string>
     <string name="defaultConnection">Default connection</string>
     <string name="preferredConnection">Preferred connection</string>
     <string name="chooseWLAN">Choose a WLAN network</string>
@@ -288,6 +303,7 @@
 
     <!-- Begin StreamHandler Specific Strings -->
     <string name="audioFocusFailed">Cannot start streaming: Another application is playing music.</string>
+    <string name="streamBufferedAhead">%1$.1fs buffered ahead</string>
     <string name="streamError">%1$s stream error: %2$s.</string>
     <string name="streamPreparationError">This error was caused by a change of server state during stream preparation.</string>
     <string name="streamSourceError">Failed to set the stream source: %1$s.</string>

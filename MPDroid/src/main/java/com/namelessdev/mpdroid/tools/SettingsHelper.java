@@ -92,24 +92,65 @@ public class SettingsHelper {
 
     /**
      * Gets the pySpotify host setting.
-     * 
-     * @return The pySpotify host, or "192.168.1.201" if not set
+     *
+     * @return The pySpotify host, or "percy.myddns.me" if not set
      */
     public String getPySpotifyHost() {
-        return mSettings.getString("pySpotifyHost", "192.168.1.201").trim();
+        return mSettings.getString("pySpotifyHost", "percy.myddns.me").trim();
     }
 
     /**
      * Gets the pySpotify port setting.
-     * 
-     * @return The pySpotify port, or 5000 if not set
+     *
+     * @return The pySpotify port, or 55000 if not set
      */
     public int getPySpotifyPort() {
         try {
-            return Integer.parseInt(mSettings.getString("pySpotifyPort", "5000").trim());
+            return Integer.parseInt(mSettings.getString("pySpotifyPort", "55000").trim());
         } catch (final NumberFormatException e) {
-            return 5000;
+            return 55000;
         }
+    }
+
+    /** Whether the pySpotify service should be reached over HTTPS rather than plain HTTP. */
+    public boolean isPySpotifyHttps() {
+        return mSettings.getBoolean("pySpotifyHttps", true);
+    }
+
+    /** Gets the pySpotify username setting, or an empty string if not set. */
+    public String getPySpotifyUsername() {
+        return mSettings.getString("pySpotifyUsername", "").trim();
+    }
+
+    /** Gets the pySpotify password setting, or an empty string if not set. */
+    public String getPySpotifyPassword() {
+        return mSettings.getString("pySpotifyPassword", "");
+    }
+
+    /**
+     * Builds the base URL (scheme, host and port, no trailing slash) for the pySpotify service.
+     */
+    public String getPySpotifyBaseUrl() {
+        final String scheme = isPySpotifyHttps() ? "https://" : "http://";
+        return scheme + getPySpotifyHost() + ':' + getPySpotifyPort();
+    }
+
+    /**
+     * Builds the HTTP Basic {@code Authorization} header value for the pySpotify service.
+     *
+     * @return The header value, or null if no username is configured.
+     */
+    public String getPySpotifyAuthHeader() {
+        final String username = getPySpotifyUsername();
+
+        if (username.isEmpty()) {
+            return null;
+        }
+
+        final String credentials = username + ':' + getPySpotifyPassword();
+        return "Basic " + android.util.Base64.encodeToString(
+                credentials.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                android.util.Base64.NO_WRAP);
     }
 
     public final boolean updateConnectionSettings() {

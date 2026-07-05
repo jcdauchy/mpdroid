@@ -39,7 +39,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
+import android.content.res.ColorStateList;
 import android.content.res.TypedArray;
+import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
@@ -142,6 +144,8 @@ public class NowPlayingFragment extends Fragment implements StatusChangeListener
     private RatingBar mSongRating = null;
 
     private ImageButton mStopButton = null;
+
+    private TextView mStreamBufferStatus = null;
 
     private SeekBar mTrackSeekBar = null;
 
@@ -277,6 +281,12 @@ public class NowPlayingFragment extends Fragment implements StatusChangeListener
 
         final SeekBar seekBarTrack = (SeekBar) view.findViewById(R.id.progress_track);
         seekBarTrack.setOnSeekBarChangeListener(seekBarTrackListener);
+
+        /**
+         * Force a clearly distinct color for the "buffered ahead" (secondary progress) fill,
+         * regardless of what the current theme/style otherwise provides for it.
+         */
+        seekBarTrack.setSecondaryProgressTintList(ColorStateList.valueOf(Color.parseColor("#FFA000")));
 
         return seekBarTrack;
     }
@@ -707,6 +717,7 @@ public class NowPlayingFragment extends Fragment implements StatusChangeListener
 
         mTrackTime = (TextView) view.findViewById(R.id.trackTime);
         mTrackTotalTime = (TextView) view.findViewById(R.id.trackTotalTime);
+        mStreamBufferStatus = (TextView) view.findViewById(R.id.streamBufferStatus);
         mVolumeIcon = (ImageView) view.findViewById(R.id.volume_icon);
 
         /** These load the TextView resource, and set it as selected. */
@@ -973,6 +984,7 @@ public class NowPlayingFragment extends Fragment implements StatusChangeListener
             mTrackTotalTime.setVisibility(View.INVISIBLE);
             stopPosTimer();
             mTrackSeekBar.setProgress(0);
+            mTrackSeekBar.setSecondaryProgress(0);
             mTrackSeekBar.setEnabled(false);
         } else {
             final long elapsedTime = status.getElapsedTime();
@@ -1133,11 +1145,33 @@ public class NowPlayingFragment extends Fragment implements StatusChangeListener
 
         mTrackSeekBar.setProgress((int) elapsedTime);
 
+        final boolean isStreamActive = mApp.isStreamActive();
+        final int streamBufferedMs = mApp.getStreamBufferedMs();
+
+        if (isStreamActive) {
+            final long bufferedAheadSeconds = streamBufferedMs / 1000L;
+            final long secondaryProgress =
+                    Math.min(totalTrackTime, elapsedTime + bufferedAheadSeconds);
+            mTrackSeekBar.setSecondaryProgress((int) secondaryProgress);
+        } else {
+            mTrackSeekBar.setSecondaryProgress(0);
+        }
+
         mHandler.post(new Runnable() {
             @Override
             public void run() {
                 mTrackTime.setText(Music.timeToString(elapsedTime));
                 mTrackTotalTime.setText(Music.timeToString(totalTrackTime));
+
+                if (mStreamBufferStatus != null) {
+                    if (isStreamActive) {
+                        mStreamBufferStatus.setText(mStreamBufferStatus.getResources()
+                                .getString(R.string.streamBufferedAhead, streamBufferedMs / 1000.0f));
+                        mStreamBufferStatus.setVisibility(View.VISIBLE);
+                    } else {
+                        mStreamBufferStatus.setVisibility(View.GONE);
+                    }
+                }
             }
         });
     }

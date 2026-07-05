@@ -916,7 +916,7 @@ public final class MPDroidService extends Service implements
             } else if (what >= NotificationHandler.LOCAL_UID && what < StreamHandler.LOCAL_UID) {
                 handleNotificationMessages(msg);
             } else if (what >= StreamHandler.LOCAL_UID) {
-                handleStreamMessage(what);
+                handleStreamMessage(msg);
             } else {
                 result = false;
             }
@@ -985,14 +985,18 @@ public final class MPDroidService extends Service implements
         /**
          * A method to handle any messages with origin in the stream handling code.
          *
-         * @param what The message to handle.
+         * @param msg The message to handle.
          */
-        private void handleStreamMessage(final int what) {
+        private void handleStreamMessage(final Message msg) {
+            final int what = msg.what;
             Log.d(TAG, "Received message: " + StreamHandler.getHandlerValue(what));
             switch (what) {
                 case StreamHandler.BUFFERING_BEGIN:
                     mNotificationHandler.setMediaPlayerBuffering(true);
                     mRemoteControlClientHandler.setMediaPlayerBuffering(true);
+                    break;
+                case StreamHandler.BUFFER_STATUS:
+                    mMessageHandler.sendMessageToClients(StreamHandler.BUFFER_STATUS, msg.arg1);
                     break;
                 case StreamHandler.REQUEST_NOTIFICATION_STOP:
                     if (mIsNotificationStarted && MPD_ASYNC_HELPER.oMPD.isConnected() &&
@@ -1036,6 +1040,28 @@ public final class MPDroidService extends Service implements
 
         private void sendMessageToClients(final int what) {
             sendMessageToClients(what, false);
+        }
+
+        /**
+         * Sends a what/int pair message to all clients, for values that don't fit the
+         * what/bool pattern (e.g. a millisecond duration).
+         *
+         * @param what  The what message to sent to bound clients.
+         * @param value The int value to pair with the what message.
+         */
+        private void sendMessageToClients(final int what, final int value) {
+            if (!mServiceClients.isEmpty()) {
+                final Message msg = Message.obtain(mHandler, what, value, 0);
+
+                for (int iterator = mServiceClients.size() - 1; iterator >= 0; iterator--) {
+                    try {
+                        mServiceClients.get(iterator).send(msg);
+                    } catch (final RemoteException e) {
+                        mServiceClients.remove(iterator);
+                        Log.w(TAG, "Client died.", e);
+                    }
+                }
+            }
         }
 
         /**
