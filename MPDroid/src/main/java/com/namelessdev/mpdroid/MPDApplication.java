@@ -68,6 +68,10 @@ public class MPDApplication extends Application implements
 
     private static final long DISCONNECT_TIMER = 15000L;
 
+    /** Backoff delays (ms) between automatic reconnection attempts after a connection failure. */
+    private static final long[] RECONNECT_BACKOFF_MS =
+            {2000L, 5000L, 10000L, 20000L, 30000L};
+
     private static final int SETTINGS = 5;
 
     private static final String TAG = "MPDApplication";
@@ -103,6 +107,36 @@ public class MPDApplication extends Application implements
 
     /** NetworkCallback for modern Android network monitoring (API 23+) */
     private ConnectivityManager.NetworkCallback mNetworkCallback = null;
+
+    /** Handler used to schedule automatic reconnection retries with backoff. */
+    private final Handler mReconnectHandler = new Handler(Looper.getMainLooper());
+
+    /** Number of consecutive automatic reconnection attempts since the last success. */
+    private int mReconnectAttempt = 0;
+
+    /** Whether an automatic reconnection retry is currently pending. */
+    private boolean mReconnectScheduled = false;
+
+    private final Runnable mReconnectRunnable = new Runnable() {
+        @Override
+        public void run() {
+            mReconnectScheduled = false;
+
+            if (mConnectionLocks.isEmpty()) {
+                // Nobody needs the connection anymore, give up quietly.
+                mReconnectAttempt = 0;
+                return;
+            }
+
+            if (oMPDAsyncHelper.oMPD != null && oMPDAsyncHelper.oMPD.isConnected()) {
+                mReconnectAttempt = 0;
+                return;
+            }
+
+            Log.d(TAG, "Automatic reconnection attempt #" + (mReconnectAttempt + 1));
+            connect();
+        }
+    };
 
     public static MPDApplication getInstance() {
         return sInstance;
@@ -178,8 +212,33 @@ public class MPDApplication extends Application implements
         mDisconnectScheduler = new Timer();
     }
 
+    /**
+     * Schedules an automatic reconnection attempt after a delay that grows with each
+     * consecutive failure, capped at the last entry of {@link #RECONNECT_BACKOFF_MS}.
+     * This keeps the app self-healing when a network blip or backgrounding causes the
+     * single reconnect attempt from the network callback/dialog retry to be missed.
+     */
+    private void scheduleReconnect() {
+        if (mReconnectScheduled || mConnectionLocks.isEmpty()) {
+            return;
+        }
+
+        final int index = Math.min(mReconnectAttempt, RECONNECT_BACKOFF_MS.length - 1);
+        final long delay = RECONNECT_BACKOFF_MS[index];
+        mReconnectAttempt++;
+        mReconnectScheduled = true;
+        mReconnectHandler.postDelayed(mReconnectRunnable, delay);
+    }
+
+    private void cancelScheduledReconnect() {
+        mReconnectHandler.removeCallbacks(mReconnectRunnable);
+        mReconnectScheduled = false;
+        mReconnectAttempt = 0;
+    }
+
     private void checkConnectionNeeded() {
         if (mConnectionLocks.isEmpty()) {
+            cancelScheduledReconnect();
             disconnect();
         } else {
             if (!oMPDAsyncHelper.isStatusMonitorAlive()) {
@@ -292,11 +351,17 @@ public class MPDApplication extends Application implements
                 } catch (final BadTokenException ignored) {
                 }
             }
+
+            // Keep trying in the background even if no activity is around to show the
+            // dialog (e.g. the app was backgrounded when the connection dropped), and
+            // even if the user is looking at the failure dialog without tapping retry.
+            scheduleReconnect();
         }
     }
 
     @Override
     public final synchronized void connectionSucceeded(final String message) {
+        cancelScheduledReconnect();
         dismissAlertDialog();
     }
 
@@ -490,6 +555,7 @@ public class MPDApplication extends Application implements
     public void onTerminate() {
         // Clean up NetworkCallback when application terminates
         unregisterNetworkCallback();
+        cancelScheduledReconnect();
         super.onTerminate();
     }
     
