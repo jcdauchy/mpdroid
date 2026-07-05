@@ -42,7 +42,8 @@ public class SimpleWidgetProviderWithStop extends SimpleWidgetProvider {
         // stop button
         intent = new Intent(context, WidgetHelperService.class);
         intent.setAction(MPDControl.ACTION_STOP);
-        pendingIntent = PendingIntent.getService(context, 0, intent, 0);
+        pendingIntent = PendingIntent.getService(context, 0, intent,
+                PendingIntent.FLAG_IMMUTABLE);
         views.setOnClickPendingIntent(R.id.control_stop, pendingIntent);
     }
 

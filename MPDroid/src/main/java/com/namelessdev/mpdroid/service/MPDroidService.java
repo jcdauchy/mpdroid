@@ -468,7 +468,8 @@ public final class MPDroidService extends Service implements
             final Intent restartServiceIntent
                     = new Intent(pendingAction, null, this, RemoteControlReceiver.class);
             final PendingIntent restartService = PendingIntent
-                    .getBroadcast(this, 1, restartServiceIntent, PendingIntent.FLAG_ONE_SHOT);
+                    .getBroadcast(this, 1, restartServiceIntent,
+                            PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
             final AlarmManager alarmService =
                     (AlarmManager) getSystemService(Context.ALARM_SERVICE);
 

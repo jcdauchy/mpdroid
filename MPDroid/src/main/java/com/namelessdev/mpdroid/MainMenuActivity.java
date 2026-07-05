@@ -38,6 +38,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.util.Log;
 import android.content.res.Configuration;
 import android.net.ConnectivityManager;
 import android.net.wifi.WifiManager;
@@ -388,6 +389,8 @@ public class MainMenuActivity extends MPDroidActivities.MPDroidActivity implemen
             final View nowPlayingSmallFragment =
                     findViewById(R.id.now_playing_small_fragment);
 
+            final View nowPlayingHeader = findViewById(R.id.now_playing_header);
+
             @Override
             public void onPanelSlide(final View panel, final float slideOffset) {
                 final ActionBar actionBar = getSupportActionBar();
@@ -417,10 +420,50 @@ public class MainMenuActivity extends MPDroidActivities.MPDroidActivity implemen
                     nowPlayingSmallFragment.setVisibility(View.GONE);
                     nowPlayingSmallFragment.setAlpha(1.0f);
                     mDrawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
+                    applyNowPlayingHeaderInset(true);
                 } else if (newState == SlidingUpPanelLayout.PanelState.COLLAPSED) {
                     nowPlayingSmallFragment.setVisibility(View.VISIBLE);
                     nowPlayingSmallFragment.setAlpha(1.0f);
                     mDrawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED);
+                    applyNowPlayingHeaderInset(false);
+                }
+            }
+
+            /**
+             * The "now playing" header row (title + overflow menu) doubles as the screen's
+             * top bar when the panel is fully expanded, since the action bar is hidden in that
+             * state ({@link #onPanelSlide}). Without accounting for the status bar height itself
+             * in that case, the row (and its overflow menu button) renders underneath the status
+             * bar. When collapsed, the action bar is showing and already reserves that space, so
+             * no extra margin is needed then.
+             *
+             * A top margin is used rather than padding: the row has a fixed height, so padding
+             * would eat into the space available for its own content (title/buttons) instead of
+             * shifting the row down, clipping the title text.
+             */
+            private void applyNowPlayingHeaderInset(final boolean expanded) {
+                if (nowPlayingHeader == null) {
+                    return;
+                }
+
+                int topInset = 0;
+                if (expanded) {
+                    final WindowInsetsCompat insets =
+                            ViewCompat.getRootWindowInsets(nowPlayingHeader);
+                    if (insets != null) {
+                        topInset = insets.getInsets(WindowInsetsCompat.Type.statusBars()
+                                | WindowInsetsCompat.Type.displayCutout()).top;
+                    }
+                }
+
+                final ViewGroup.LayoutParams params = nowPlayingHeader.getLayoutParams();
+                if (params instanceof ViewGroup.MarginLayoutParams) {
+                    final ViewGroup.MarginLayoutParams marginParams =
+                            (ViewGroup.MarginLayoutParams) params;
+                    if (marginParams.topMargin != topInset) {
+                        marginParams.topMargin = topInset;
+                        nowPlayingHeader.setLayoutParams(marginParams);
+                    }
                 }
             }
         };
@@ -553,12 +596,16 @@ public class MainMenuActivity extends MPDroidActivities.MPDroidActivity implemen
         
         // Ensure the navigation drawer respects window insets to lower the display
         if (mDrawerList != null) {
+            // Capture the XML-defined base padding (actionBarSize) once. The insets listener
+            // below can fire repeatedly over the view's lifetime (action bar show/hide,
+            // rotation, etc.), so it must always add the inset to this fixed base rather than
+            // to whatever padding it last set, or the padding grows a little more on every
+            // call until the bottom drawer items are pushed off-screen.
+            final int basePaddingTop = mDrawerList.getPaddingTop();
             ViewCompat.setOnApplyWindowInsetsListener(mDrawerList, (v, insets) -> {
                 int top = insets.getInsets(WindowInsetsCompat.Type.statusBars() | WindowInsetsCompat.Type.displayCutout()).top;
-                // Get existing paddingTop (which is actionBarSize)
-                int currentPaddingTop = v.getPaddingTop();
-                // Add status bar height to the existing action bar padding
-                v.setPadding(v.getPaddingLeft(), currentPaddingTop + top, v.getPaddingRight(), v.getPaddingBottom());
+                // Add status bar height to the original action bar padding
+                v.setPadding(v.getPaddingLeft(), basePaddingTop + top, v.getPaddingRight(), v.getPaddingBottom());
                 return insets;
             });
         }
@@ -676,10 +723,15 @@ public class MainMenuActivity extends MPDroidActivities.MPDroidActivity implemen
             } else if (itemId == CONNECT) {
                 mApp.connect();
             } else if (itemId == R.id.GMM_Stream) {
+                final boolean isConnected = mApp.oMPDAsyncHelper.oMPD.isConnected();
+                Log.d(TAG, "GMM_Stream tapped, isStreamActive=" + mApp.isStreamActive()
+                        + " isConnected=" + isConnected);
                 if (mApp.isStreamActive()) {
                     mApp.stopStreaming();
-                } else if (mApp.oMPDAsyncHelper.oMPD.isConnected()) {
+                } else if (isConnected) {
                     mApp.startStreaming();
+                } else {
+                    Tools.notifyUser(R.string.notConnected);
                 }
             } else if (itemId == R.id.GMM_Consume) {
                 MPDControl.run(MPDControl.ACTION_CONSUME);

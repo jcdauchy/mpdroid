@@ -13,6 +13,10 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <!-- Wake Lock for Streaming -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Required since Android 9 (API 28) to call Service.startForeground() -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- Required since Android 14 (API 34) for a media playback foreground service -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
     <application
         android:name="com.namelessdev.mpdroid.MPDApplication"
@@ -99,6 +103,7 @@
         <service
             android:name=".service.MPDroidService"
             android:exported="false"
+            android:foregroundServiceType="mediaPlayback"
             android:icon="@drawable/icon"
             android:process=":MPDroidService" />
 

@@ -717,10 +717,9 @@ public class MPDApplication extends Application implements
     }
 
     public final void startStreaming() {
+        Log.d(TAG, "startStreaming() called, mIsStreamActive=" + mIsStreamActive);
         if (!mIsStreamActive) {
-            if (DEBUG) {
-                Log.d(TAG, "Starting stream.");
-            }
+            Log.d(TAG, "Starting stream.");
             setupServiceBinder();
             mServiceBinder.sendMessageToService(StreamHandler.START);
         }

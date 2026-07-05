@@ -27,10 +27,12 @@ import org.a0z.mpd.item.Music;
 
 import android.annotation.TargetApi;
 import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
 import android.graphics.Bitmap;
 import android.os.Build;
 import androidx.core.app.NotificationCompat;
@@ -53,6 +55,8 @@ public class NotificationHandler implements AlbumCoverHandler.NotificationCallba
     public static final int PERSISTENT_OVERRIDDEN = LOCAL_UID + 4;
 
     private static final int NOTIFICATION_ID = 1;
+
+    private static final String CHANNEL_ID = "default";
 
     private static final String TAG = "NotificationHandler";
 
@@ -84,6 +88,17 @@ public class NotificationHandler implements AlbumCoverHandler.NotificationCallba
         mNotificationManager = (NotificationManager) mServiceContext
                 .getSystemService(Context.NOTIFICATION_SERVICE);
 
+        // Required since Android 8.0 (API 26): posting a notification on a channel that was
+        // never registered is silently dropped for regular notifications, but for a foreground
+        // service notification it crashes the process with
+        // RemoteServiceException$CannotPostForegroundServiceNotificationException.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            final NotificationChannel channel = new NotificationChannel(CHANNEL_ID,
+                    mServiceContext.getString(R.string.app_name),
+                    NotificationManager.IMPORTANCE_LOW);
+            mNotificationManager.createNotificationChannel(channel);
+        }
+
         final RemoteViews resultView = new RemoteViews(mServiceContext.getPackageName(),
                 R.layout.notification);
 
@@ -108,9 +123,9 @@ public class NotificationHandler implements AlbumCoverHandler.NotificationCallba
         final Intent musicPlayerActivity = new Intent(context, MainMenuActivity.class);
         final PendingIntent notificationClick = PendingIntent
                 .getActivity(context, 0, musicPlayerActivity,
-                        PendingIntent.FLAG_UPDATE_CURRENT);
+                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        final NotificationCompat.Builder builder = new NotificationCompat.Builder(context, "default");
+        final NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID);
         builder.setSmallIcon(R.drawable.icon_notification);
         builder.setContentIntent(notificationClick);
         builder.setStyle(new NotificationCompat.BigTextStyle());
@@ -228,7 +243,8 @@ public class NotificationHandler implements AlbumCoverHandler.NotificationCallba
     private PendingIntent buildPendingIntent(final String action) {
         final Intent intent = new Intent(mServiceContext, RemoteControlReceiver.class);
         intent.setAction(action);
-        return PendingIntent.getBroadcast(mServiceContext, 0, intent, 0);
+        return PendingIntent.getBroadcast(mServiceContext, 0, intent,
+                PendingIntent.FLAG_IMMUTABLE);
     }
 
     final boolean isActive() {
@@ -382,7 +398,12 @@ public class NotificationHandler implements AlbumCoverHandler.NotificationCallba
         mNotificationManager.notify(NOTIFICATION_ID, mNotification);
 
         if (!mIsForeground) {
-            mServiceContext.startForeground(NOTIFICATION_ID, mNotification);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                mServiceContext.startForeground(NOTIFICATION_ID, mNotification,
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
+            } else {
+                mServiceContext.startForeground(NOTIFICATION_ID, mNotification);
+            }
             mIsForeground = true;
         }
     }
